@@ -1,0 +1,11 @@
+emoji==0.5.4
+fuzzywuzzy==0.16.0
+gym==0.15.4
+nltk==3.3
+python-Levenshtein==0.12.0
+pandas==0.23.4
+pyspellchecker==0.5.4
+spacy==2.0.18
+rasa-composite-entities==0.4.5
+# rasa is being install in Dockerfile
+#git+https://unqa@bitbucket.org/unqa/rasa.git@v1.10.3

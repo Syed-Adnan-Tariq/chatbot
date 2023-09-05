@@ -1,0 +1,241 @@
+version: '3'
+services:
+  redis:
+    image: 'bitnami/redis:latest'
+    container_name: "tc_redis"
+    ports:
+      - "6379:6379"
+    networks:
+      - thumbcrowd
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+  web_app:
+    image: tc_django
+    container_name: tc_web_app
+    ports:
+     - "8000:8000"
+    volumes:
+      - .:/code
+      - node_modules:/code/node_modules
+    networks:
+      - thumbcrowd
+    entrypoint: /bin/sh -c "make collectstatic && make compress && make migrate && make run-app"
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=db
+      - POSTGRES_DBNAME=temba
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=password
+      - AI_APP_URL=http://localhost:3000/ai
+      - ELASTICSEARCH_URL=elastic_search
+      - PYTHONIOENCODING='utf8'
+      - AI_BOTS_HOST=ai_api
+      - AI_BOTS_PORT=4000
+      - KANNEL_WRAPPER_HOST=dockerhost
+      - KANNEL_WRAPPER_PORT=8070
+      - DSN=
+      - ADMIN_EMAIL=
+      - APP_URL=http://127.0.0.1:8000
+      - WEB_WIDGET_HOST=http://localhost:8050
+      - WEB_WIDGET_API=http://dockerhost:8050
+      - KANNEL_STATUS_URL=http://dockerhost:13013/cgi-bin/sendsms
+      - ELASTICSEARCH_HEALTH=http://elastic_search:9200/_cluster/health
+      - COURIER_URL=http://dockerhost:8080
+      - TWILIO_WHATSAPP_WRAPPER_API=http://dockerhost:8060
+      - DOMAIN=127.0.0.1:8000
+      - COLLECT_API_HOST=http://localhost:8040
+      - COLLECT_API_TOKEN=apikey 5Vjoot6LC3kgWwzIE0AQwj:1J9aORblK7m7s4n70UZLDM
+      - WEB_WHATSAPP_HOST=http://localhost:8010
+      - WEB_WHATSAPP_API=http://dockerhost:8020
+      - WEB_WHATSAPP_HC_HOST=http://dockerhost:8010
+      - COLLECT_API_HC_HOST=http://dockerhost:8040
+      - TEAM_INBOX_APP_URL=http://dockerhost:8065
+      - TEAM_INBOX_ALERTS_API=http://dockerhost:8065/receive
+      - CHEETAY_API_TOKEN=
+      - CHEETAY_PHONE_ID=
+    extra_hosts:
+    - "dockerhost:$DOCKERHOST"
+    depends_on:
+      - duckling
+  celery:
+    image: tc_django
+    container_name: "tc_celery"
+    volumes:
+      - .:/code
+    networks:
+      - thumbcrowd
+    entrypoint: celery -A temba worker -l info -Q msgs,handler
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=db
+      - POSTGRES_DBNAME=temba
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=password
+      - PYTHONIOENCODING='utf8'
+      - AI_BOTS_HOST=ai_api
+      - AI_BOTS_PORT=4000
+      - ELASTICSEARCH_URL=elastic_search
+      - AI_APP_URL=http://localhost:3000/ai
+      - APP_URL=http://127.0.0.1:8000
+      - DSN=
+      - ADMIN_EMAIL=
+      - TEAM_INBOX_ALERTS_API=http://dockerhost:8065/receive
+    depends_on:
+      - elastic_search
+    extra_hosts:
+    - "dockerhost:$DOCKERHOST"
+  celery_default:
+    image: tc_django
+    container_name: "tc_celery_default"
+    volumes:
+      - .:/code
+    networks:
+      - thumbcrowd
+    entrypoint: celery -A temba worker -l info -Q celery,flows
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=db
+      - POSTGRES_DBNAME=temba
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=password
+      - PYTHONIOENCODING='utf8'
+      - AI_BOTS_HOST=ai_api
+      - AI_BOTS_PORT=4000
+      - ELASTICSEARCH_URL=elastic_search
+      - AI_APP_URL=http://localhost:3000/ai
+      - APP_URL=http://127.0.0.1:8000
+      - DSN=
+      - ADMIN_EMAIL=
+      - TEAM_INBOX_ALERTS_API=http://dockerhost:8065/receive
+    depends_on:
+      - elastic_search
+    extra_hosts:
+    - "dockerhost:$DOCKERHOST"
+  celery_ai:
+    image: tc_django
+    container_name: "tc_celery_ai"
+    volumes:
+      - .:/code
+    networks:
+      - thumbcrowd
+    entrypoint: celery -A temba worker -l info -Q ai_training
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=db
+      - POSTGRES_DBNAME=temba
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=password
+      - PYTHONIOENCODING='utf8'
+      - AI_BOTS_HOST=ai_api
+      - AI_BOTS_PORT=4000
+      - ELASTICSEARCH_URL=elastic_search
+      - AI_APP_URL=http://localhost:3000/ai
+      - APP_URL=http://127.0.0.1:8000
+      - DSN=
+      - ADMIN_EMAIL=
+  celery_beat:
+    image: tc_django
+    container_name: "tc_celery_beat"
+    volumes:
+      - .:/code
+    networks:
+      - thumbcrowd
+    entrypoint: celery -A temba beat -l info --pidfile=
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=db
+      - POSTGRES_DBNAME=temba
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=password
+      - PYTHONIOENCODING='utf8'
+      - AI_BOTS_HOST=ai_api
+      - AI_BOTS_PORT=4000
+      - ELASTICSEARCH_URL=elastic_search
+      - AI_APP_URL=http://localhost:3000/ai
+      - APP_URL=http://127.0.0.1:8000
+      - DSN=
+      - ADMIN_EMAIL=
+    depends_on:
+      - elastic_search
+    extra_hosts:
+    - "dockerhost:$DOCKERHOST"
+  tc_cmd:
+    image: tc_django
+    container_name: tc_cmd
+    volumes:
+      - .:/code
+    networks:
+      - thumbcrowd
+    entrypoint: bash
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=db
+      - POSTGRES_DBNAME=temba
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=password
+      - PYTHONIOENCODING='utf8'
+      - AI_BOTS_HOST=ai_api
+      - AI_BOTS_PORT=4000
+      - WEB_WIDGET_HOST=http://localhost:8050
+      - WEB_WIDGET_API=http://dockerhost:8050
+      - APP_URL=http://127.0.0.1:8000
+      - KANNEL_STATUS_URL=http://dockerhost:13013/cgi-bin/sendsms
+      - ELASTICSEARCH_HEALTH=http://elastic_search:9200/_cluster/health
+      - COURIER_URL=http://dockerhost:8080
+      - AI_APP_URL=http://localhost:3000/ai
+      - COLLECT_API_HOST=http://localhost:8040
+      - COLLECT_API_TOKEN=apikey 5Vjoot6LC3kgWwzIE0AQwj:1J9aORblK7m7s4n70UZLDM
+      - WEB_WHATSAPP_HOST=http://localhost:8010
+      - WEB_WHATSAPP_API=http://dockerhost:8020
+      - WEB_WHATSAPP_HC_HOST=http://dockerhost:8010
+      - COLLECT_API_HC_HOST=http://dockerhost:8040
+      - ELASTICSEARCH_URL=elastic_search
+      - TEAM_INBOX_APP_URL=http://dockerhost:8065
+      - TEAM_INBOX_ALERTS_API=http://dockerhost:8065/receive
+      - CHEETAY_API_TOKEN=
+      - CHEETAY_PHONE_ID=
+    extra_hosts:
+    - "dockerhost:$DOCKERHOST"
+    depends_on:
+      - duckling
+  duckling:
+    image: rasa/duckling:latest
+    container_name: duckling
+    restart: always
+    ports:
+    - "7000:7000"
+    networks:
+      - thumbcrowd
+    entrypoint: duckling-example-exe -p 7000
+  db:
+    image: "kartoza/postgis:9.6-2.4"
+    container_name: "thumbcrowd_db"
+    ports:
+      - "54320:5432"
+    restart: always
+    networks:
+      - thumbcrowd
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASS=password
+      - POSTGRES_DBNAME=temba
+      - ALLOW_IP_RANGE=0.0.0.0/0
+    volumes:
+      - pg_data:/var/lib/postgresql
+  elastic_search:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:6.5.0"
+    container_name: elastic_search
+    ports:
+    - 9200:9200
+    - 9300:9300
+    environment:
+      - discovery.type=single-node
+    networks:
+      - thumbcrowd
+    entrypoint: /usr/local/bin/docker-entrypoint.sh
+networks:
+  thumbcrowd:
+    driver: bridge
+volumes:
+  pg_data:
+  node_modules:
